@@ -2,17 +2,19 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
-  addr := flag.Int("addr", 4000, "Specifies the port for the server to startup on.");
+  addr := flag.String("addr", "4000", "Specifies the port for the server to startup on.");
   flag.Parse();
 
-  mux := http.NewServeMux()
+  infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+  errLog := log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
+  mux := http.NewServeMux()
   fileserver := http.FileServer(http.Dir("./ui/static/"))
   mux.Handle("/static/", http.StripPrefix("/static", fileserver))
 
@@ -20,8 +22,14 @@ func main() {
   mux.HandleFunc("/snippet/view", snippetView)
   mux.HandleFunc("/snippet/create", snippetCreate)
 
-  fmt.Printf("Server started on port %d \n", addr);
-  err := http.ListenAndServe(fmt.Sprintf(":%d",addr), mux)
+  infoLog.Printf("Server started on port %s\n", *addr);
 
-  log.Fatal(err)
+  server := &http.Server{
+    Addr: ":"+*addr,
+    ErrorLog: errLog,
+    Handler: mux,
+  }
+  err := server.ListenAndServe()
+
+  errLog.Fatal(err)
 }
